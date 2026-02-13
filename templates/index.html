@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Dashboard · TollVault</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --card-hover: #253449;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --green: #10b981;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --text: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --muted: #94a3b8;
+            --border: #334155;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --radius: 14px;
+        }
+
+        [data-theme="light"] {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --card-hover: #f1f5f9;
+            --text: #0f172a;
+            --text-secondary: #334155;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background .3s, color .3s
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem 3rem
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .logo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: .5rem
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent), var(--green));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .9rem
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: .25rem
+        }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            padding: .5rem .75rem;
+            border-radius: 8px;
+            transition: .2s;
+            font-size: .9rem;
+            font-weight: 500
+        }
+
+        nav a:hover {
+            background: var(--card);
+            color: var(--text)
+        }
+
+        .theme-toggle {
+            display: flex;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-left: .5rem
+        }
+
+        .theme-toggle button {
+            background: none;
+            border: none;
+            color: var(--muted);
+            padding: .45rem .6rem;
+            cursor: pointer;
+            font-size: .85rem;
+            transition: .2s
+        }
+
+        .theme-toggle button:hover {
+            color: var(--text)
+        }
+
+        .theme-toggle button.active {
+            background: var(--accent);
+            color: #fff
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem
+        }
+
+        .stat {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: .2s;
+            box-shadow: var(--shadow)
+        }
+
+        .stat:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px)
+        }
+
+        .stat .value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -.02em
+        }
+
+        .stat .label {
+            color: var(--muted);
+            font-size: .75rem;
+            margin-top: .35rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-weight: 600
+        }
+
+        .green .value {
+            color: var(--green)
+        }
+
+        .amber .value {
+            color: var(--amber)
+        }
+
+        .red .value {
+            color: var(--red)
+        }
+
+        .card {
+            background: var(--card);
+            padding: 1.75rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow)
+        }
+
+        .card h2 {
+            margin-bottom: 1.25rem;
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: .5rem
+        }
+
+        .slabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem
+        }
+
+        .slab {
+            background: var(--bg);
+            padding: 1.25rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: .2s
+        }
+
+        .slab:hover {
+            border-color: var(--accent)
+        }
+
+        .slab .value {
+            font-size: 1.8rem;
+            font-weight: 700
+        }
+
+        .slab .label {
+            color: var(--muted);
+            font-size: .75rem;
+            margin-top: .25rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            padding: 2.5rem 1rem;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: .3s;
+            color: var(--muted);
+            display: block
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            color: var(--text)
+        }
+
+        .upload-area input {
+            display: none
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: .5rem;
+            opacity: .7
+        }
+
+        .upload-text {
+            font-size: .95rem
+        }
+
+        .upload-hint {
+            font-size: .8rem;
+            margin-top: .5rem;
+            color: var(--muted)
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem
+        }
+
+        .card-header h2 {
+            margin-bottom: 0
+        }
+
+        .btn-reset {
+            background: none;
+            border: 1px solid var(--red);
+            color: var(--red);
+            padding: .45rem .9rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .8rem;
+            font-weight: 600;
+            transition: .2s;
+            font-family: inherit
+        }
+
+        .btn-reset:hover {
+            background: var(--red);
+            color: #fff
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            align-items: center;
+            justify-content: center
+        }
+
+        .modal-overlay.show {
+            display: flex
+        }
+
+        .modal {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: var(--shadow);
+            text-align: center
+        }
+
+        .modal h3 {
+            margin-bottom: .75rem;
+            font-size: 1.1rem
+        }
+
+        .modal p {
+            color: var(--muted);
+            font-size: .9rem;
+            margin-bottom: 1.5rem
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: .75rem;
+            justify-content: center
+        }
+
+        .modal-btns button {
+            padding: .6rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: .9rem;
+            font-family: inherit;
+            transition: .2s
+        }
+
+        .btn-cancel {
+            background: var(--border);
+            color: var(--text)
+        }
+
+        .btn-confirm {
+            background: var(--red);
+            color: #fff
+        }
+
+        .btn-confirm:hover {
+            opacity: .85
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <nav>
+            <div class="logo">
+                <div class="logo-icon">🏛️</div> TollVault
+            </div>
+            <div class="nav-right">
+                <a href="/history">📅 History</a>
+                <a href="/settings">⚙️ Settings</a>
+                <div class="theme-toggle" id="themeToggle">
+                    <button onclick="setTheme('light')" title="Light" id="btn-light">☀️</button>
+                    <button onclick="setTheme('dark')" title="Dark" id="btn-dark">🌙</button>
+                    <button onclick="setTheme('system')" title="System" id="btn-system">💻</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="stats">
+            <div class="stat green">
+                <div class="value">₹{{printf "%.2f" .Revenue}}</div>
+                <div class="label">Total Revenue</div>
+            </div>
+            <div class="stat amber">
+                <div class="value">₹{{printf "%.2f" .GST}}</div>
+                <div class="label">Total GST</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>📈 Transaction Slabs</h2>
+                <button class="btn-reset" onclick="document.getElementById('resetModal').classList.add('show')">🗑️
+                    Clear Last Upload</button>
+            </div>
+            <div class="slabs">
+                <div class="slab">
+                    <div class="value green">{{.Slabs.Count125}}</div>
+                    <div class="label">₹125</div>
+                </div>
+                <div class="slab">
+                    <div class="value amber">{{.Slabs.Count75}}</div>
+                    <div class="label">₹75</div>
+                </div>
+                <div class="slab">
+                    <div class="value red">{{.Slabs.Count0}}</div>
+                    <div class="label">₹0 (Free)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📂 Upload CSV</h2>
+            <form action="/upload" method="POST" enctype="multipart/form-data">
+                <label class="upload-area" for="fileInput">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">Click to select your CSV file</div>
+                    <div class="upload-hint">Supports .csv with ENROLMENT_NO_DATE, TOTAL_AMOUNT_CHARGED, etc.</div>
+                    <input type="file" name="csvfile" id="fileInput" accept=".csv" onchange="this.form.submit()">
+                </label>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div class="modal-overlay" id="resetModal">
+        <div class="modal">
+            <h3>⚠️ Clear Last Upload?</h3>
+            <p>This will remove the most recent batch of uploaded transactions. Older history is preserved. You can then
+                upload a new CSV.</p>
+            <div class="modal-btns">
+                <button class="btn-cancel"
+                    onclick="document.getElementById('resetModal').classList.remove('show')">Cancel</button>
+                <form action="/reset" method="POST" style="display:inline">
+                    <button type="submit" class="btn-confirm">Yes, Reset</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setTheme(mode) { localStorage.setItem('theme', mode); applyTheme() }
+        function applyTheme() {
+            const mode = localStorage.getItem('theme') || 'system';
+            document.querySelectorAll('.theme-toggle button').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById('btn-' + mode); if (btn) btn.classList.add('active');
+            if (mode === 'system') { const d = window.matchMedia('(prefers-color-scheme:dark)').matches; document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light') }
+            else { document.documentElement.setAttribute('data-theme', mode) }
+        }
+        window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (localStorage.getItem('theme') === 'system') applyTheme() });
+        applyTheme();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,25 @@
+# Database
+data.db
+*.db
+
+# Config (contains secrets)
+config.json
+
+# Upload directory
+uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build output
+
+# Go
+vendor/

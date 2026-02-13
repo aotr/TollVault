@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Settings · TollVault</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --card-hover: #253449;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --text: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --muted: #94a3b8;
+            --border: #334155;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --input-bg: #0f172a;
+            --radius: 14px;
+        }
+
+        [data-theme="light"] {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --card-hover: #f1f5f9;
+            --text: #0f172a;
+            --text-secondary: #334155;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            --input-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background .3s, color .3s
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem 3rem
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border)
+        }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: .9rem;
+            padding: .5rem .75rem;
+            border-radius: 8px;
+            transition: .2s
+        }
+
+        nav a:hover {
+            background: var(--card);
+            color: var(--text)
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: .25rem
+        }
+
+        .theme-toggle {
+            display: flex;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-left: .5rem
+        }
+
+        .theme-toggle button {
+            background: none;
+            border: none;
+            color: var(--muted);
+            padding: .45rem .6rem;
+            cursor: pointer;
+            font-size: .85rem;
+            transition: .2s
+        }
+
+        .theme-toggle button:hover {
+            color: var(--text)
+        }
+
+        .theme-toggle button.active {
+            background: var(--accent);
+            color: #fff
+        }
+
+        .card {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow)
+        }
+
+        h1 {
+            margin-bottom: .5rem;
+            font-size: 1.3rem
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: .85rem;
+            margin-bottom: 1.5rem
+        }
+
+        .section-title {
+            font-size: .8rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: 1rem;
+            padding-bottom: .5rem;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem
+        }
+
+        label {
+            display: block;
+            margin-bottom: .4rem;
+            font-weight: 600;
+            font-size: .85rem
+        }
+
+        input {
+            width: 100%;
+            padding: .7rem .85rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--input-bg);
+            color: var(--text);
+            font-size: .9rem;
+            font-family: inherit;
+            transition: .2s
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow)
+        }
+
+        .divider {
+            border: 0;
+            border-top: 1px solid var(--border);
+            margin: 1.75rem 0
+        }
+
+        button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: .8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .95rem;
+            width: 100%;
+            font-weight: 600;
+            transition: .2s;
+            font-family: inherit
+        }
+
+        button:hover {
+            opacity: .9;
+            transform: translateY(-1px)
+        }
+
+        button:active {
+            transform: translateY(0)
+        }
+
+        .hint {
+            font-size: .75rem;
+            color: var(--muted);
+            margin-top: .3rem
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <nav>
+            <a href="/">← Dashboard</a>
+            <div class="nav-right">
+                <div class="theme-toggle" id="themeToggle">
+                    <button onclick="setTheme('light')" title="Light" id="btn-light">☀️</button>
+                    <button onclick="setTheme('dark')" title="Dark" id="btn-dark">🌙</button>
+                    <button onclick="setTheme('system')" title="System" id="btn-system">💻</button>
+                </div>
+            </div>
+        </nav>
+        <div class="card">
+            <h1>⚙️ Settings</h1>
+            <div class="subtitle">Configure your server, database, and Telegram bot</div>
+            <form action="/save-settings" method="POST">
+                <div class="section-title">🖥️ Server</div>
+                <div class="form-group">
+                    <label>Port</label>
+                    <input type="text" name="port" value="{{.Port}}" placeholder="8080">
+                    <div class="hint">Restart required after change</div>
+                </div>
+                <div class="form-group">
+                    <label>Database Path</label>
+                    <input type="text" name="db_path" value="{{.DBPath}}" placeholder="data.db">
+                    <div class="hint">Restart required after change</div>
+                </div>
+                <hr class="divider">
+                <div class="section-title">🤖 Telegram Bot</div>
+                <div class="form-group">
+                    <label>Bot Token</label>
+                    <input type="text" name="telegram_token" value="{{.TelegramToken}}"
+                        placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11">
+                </div>
+                <div class="form-group">
+                    <label>Admin Chat ID</label>
+                    <input type="number" name="admin_chat_id" value="{{.AdminChatID}}" placeholder="-4021888055">
+                    <div class="hint">Negative for groups, positive for direct chats</div>
+                </div>
+                <button type="submit">💾 Save Settings</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function setTheme(mode) { localStorage.setItem('theme', mode); applyTheme() }
+        function applyTheme() {
+            const mode = localStorage.getItem('theme') || 'system';
+            document.querySelectorAll('.theme-toggle button').forEach(b => b.classList.remove('active'));
+            const btn = document.getElementById('btn-' + mode); if (btn) btn.classList.add('active');
+            if (mode === 'system') { const d = window.matchMedia('(prefers-color-scheme:dark)').matches; document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light') }
+            else { document.documentElement.setAttribute('data-theme', mode) }
+        }
+        window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (localStorage.getItem('theme') === 'system') applyTheme() });
+        applyTheme();
+    </script>
+</body>
+
+</html>
