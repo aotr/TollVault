@@ -101,6 +101,7 @@ func main() {
 	http.HandleFunc("/history", handleHistory)
 	http.HandleFunc("/api/analytics", handleAnalyticsAPI)
 	http.HandleFunc("/api/history", handleHistoryAPI)
+	http.HandleFunc("/api/test-telegram", handleTestTelegram)
 	http.HandleFunc("/settings", handleSettings)
 	http.HandleFunc("/save-settings", handleSaveSettings)
 
@@ -403,7 +404,12 @@ func processCSV(r io.Reader) (*UploadResult, error) {
 // ──────────────────────────────────────────────
 
 func sendTelegramReport(result *UploadResult) {
-	if bot == nil || config.AdminChatID == 0 {
+	if bot == nil {
+		log.Println("Telegram report skipped: bot not initialized (check token in settings)")
+		return
+	}
+	if config.AdminChatID == 0 {
+		log.Println("Telegram report skipped: admin_chat_id is not set in settings")
 		return
 	}
 	text := fmt.Sprintf(
@@ -434,7 +440,9 @@ func sendTelegramReport(result *UploadResult) {
 	)
 	msg := tgbotapi.NewMessage(config.AdminChatID, text)
 	msg.ParseMode = "Markdown"
-	bot.Send(msg)
+	if _, err := bot.Send(msg); err != nil {
+		log.Println("Telegram send error:", err)
+	}
 }
 
 // ──────────────────────────────────────────────
@@ -576,6 +584,47 @@ func handleSaveSettings(w http.ResponseWriter, r *http.Request) {
 	saveConfigToDisk()
 	initBot()
 	http.Redirect(w, r, "/settings", http.StatusSeeOther)
+}
+
+func handleTestTelegram(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if config.TelegramToken == "" {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "Bot token is empty. Set it in settings first."})
+		return
+	}
+	if config.AdminChatID == 0 {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "Admin Chat ID is not set. Set it in settings first."})
+		return
+	}
+	if bot == nil {
+		// Try to reinitialize
+		initBot()
+		if bot == nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "Bot failed to initialize. Check if the token is valid."})
+			return
+		}
+	}
+
+	text := fmt.Sprintf(
+		"✅ *TollVault Bot Test*\n"+
+			"━━━━━━━━━━━━━━━━━━━━\n"+
+			"🤖 Bot: @%s\n"+
+			"📅 Time: %s\n"+
+			"━━━━━━━━━━━━━━━━━━━━\n"+
+			"Connection successful!",
+		bot.Self.UserName,
+		time.Now().Format("02 Jan 2006, 3:04 PM"),
+	)
+	msg := tgbotapi.NewMessage(config.AdminChatID, text)
+	msg.ParseMode = "Markdown"
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Println("Telegram test error:", err)
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": "Send failed: " + err.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "bot_name": "@" + bot.Self.UserName})
 }
 
 // ──────────────────────────────────────────────

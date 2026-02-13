@@ -205,6 +205,67 @@
             color: var(--muted);
             margin-top: .3rem
         }
+
+        .btn-row {
+            display: flex;
+            gap: .75rem;
+            margin-top: .25rem
+        }
+
+        .btn-row button {
+            flex: 1
+        }
+
+        .btn-test {
+            background: #059669 !important
+        }
+
+        .btn-test:hover {
+            background: #047857 !important
+        }
+
+        .btn-test:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+            transform: none !important
+        }
+
+        .test-result {
+            margin-top: .75rem;
+            padding: .75rem 1rem;
+            border-radius: 8px;
+            font-size: .85rem;
+            font-weight: 500;
+            display: none;
+            animation: slideIn .3s ease
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-8px) }
+            to { opacity: 1; transform: translateY(0) }
+        }
+
+        .test-result.success {
+            display: block;
+            background: rgba(5, 150, 105, 0.15);
+            border: 1px solid rgba(5, 150, 105, 0.3);
+            color: #34d399
+        }
+
+        .test-result.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171
+        }
+
+        [data-theme="light"] .test-result.success {
+            color: #047857
+        }
+
+        [data-theme="light"] .test-result.error {
+            color: #dc2626
+        }
     </style>
 </head>
 
@@ -247,7 +308,11 @@
                     <input type="number" name="admin_chat_id" value="{{.AdminChatID}}" placeholder="-4021888055">
                     <div class="hint">Negative for groups, positive for direct chats</div>
                 </div>
-                <button type="submit">💾 Save Settings</button>
+                <div class="btn-row">
+                    <button type="submit">💾 Save Settings</button>
+                    <button type="button" class="btn-test" id="testTelegramBtn" onclick="testTelegram()">🧪 Test Bot</button>
+                </div>
+                <div class="test-result" id="testResult"></div>
             </form>
         </div>
     </div>
@@ -263,6 +328,32 @@
         }
         window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (localStorage.getItem('theme') === 'system') applyTheme() });
         applyTheme();
+
+        async function testTelegram() {
+            const btn = document.getElementById('testTelegramBtn');
+            const result = document.getElementById('testResult');
+            btn.disabled = true;
+            btn.textContent = '⏳ Testing...';
+            result.className = 'test-result';
+            result.style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/test-telegram');
+                const data = await resp.json();
+                if (data.ok) {
+                    result.className = 'test-result success';
+                    result.innerHTML = '✅ Bot connected! Test message sent via <b>' + data.bot_name + '</b>';
+                } else {
+                    result.className = 'test-result error';
+                    result.innerHTML = '❌ ' + data.error;
+                }
+            } catch (e) {
+                result.className = 'test-result error';
+                result.innerHTML = '❌ Network error: ' + e.message;
+            }
+            btn.disabled = false;
+            btn.textContent = '🧪 Test Bot';
+        }
     </script>
 </body>
 
