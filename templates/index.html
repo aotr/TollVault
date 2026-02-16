@@ -364,6 +364,44 @@
         .btn-confirm:hover {
             opacity: .85
         }
+
+        .view-toggle {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem
+        }
+
+        .toggle-group {
+            display: flex;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow)
+        }
+
+        .toggle-group button {
+            background: none;
+            border: none;
+            color: var(--muted);
+            padding: .6rem 1.5rem;
+            cursor: pointer;
+            font-size: .85rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: .2s;
+            position: relative
+        }
+
+        .toggle-group button:hover {
+            color: var(--text)
+        }
+
+        .toggle-group button.active {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3)
+        }
     </style>
 </head>
 
@@ -384,14 +422,22 @@
             </div>
         </nav>
 
+        <div class="view-toggle">
+            <div class="toggle-group">
+                <button id="toggle-today" onclick="switchView('today')">📅 Today</button>
+                <button id="toggle-lifetime" onclick="switchView('lifetime')">🌐 Lifetime</button>
+            </div>
+        </div>
+
         <div class="stats">
             <div class="stat green">
-                <div class="value">₹{{printf "%.2f" .Revenue}}</div>
-                <div class="label">Total Revenue</div>
+                <div class="value" id="stat-revenue">₹{{printf "%.2f" .Revenue}}</div>
+                <div class="label" id="label-revenue">{{if eq .View "lifetime"}}Total Revenue{{else}}Today's
+                    Revenue{{end}}</div>
             </div>
             <div class="stat amber">
-                <div class="value">₹{{printf "%.2f" .GST}}</div>
-                <div class="label">Total GST</div>
+                <div class="value" id="stat-gst">₹{{printf "%.2f" .GST}}</div>
+                <div class="label" id="label-gst">{{if eq .View "lifetime"}}Total GST{{else}}Today's GST{{end}}</div>
             </div>
         </div>
 
@@ -403,15 +449,15 @@
             </div>
             <div class="slabs">
                 <div class="slab">
-                    <div class="value green">{{.Slabs.Count125}}</div>
+                    <div class="value green" id="slab-125">{{.Slabs.Count125}}</div>
                     <div class="label">₹125</div>
                 </div>
                 <div class="slab">
-                    <div class="value amber">{{.Slabs.Count75}}</div>
+                    <div class="value amber" id="slab-75">{{.Slabs.Count75}}</div>
                     <div class="label">₹75</div>
                 </div>
                 <div class="slab">
-                    <div class="value red">{{.Slabs.Count0}}</div>
+                    <div class="value red" id="slab-0">{{.Slabs.Count0}}</div>
                     <div class="label">₹0 (Free)</div>
                 </div>
             </div>
@@ -457,6 +503,37 @@
         }
         window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (localStorage.getItem('theme') === 'system') applyTheme() });
         applyTheme();
+
+        // View toggle: today (default) / lifetime
+        const currentView = '{{.View}}' || 'today';
+        document.getElementById('toggle-' + currentView).classList.add('active');
+
+        async function switchView(view) {
+            document.querySelectorAll('.toggle-group button').forEach(b => b.classList.remove('active'));
+            document.getElementById('toggle-' + view).classList.add('active');
+
+            // Update labels
+            const prefix = view === 'lifetime' ? 'Total' : "Today's";
+            document.getElementById('label-revenue').textContent = prefix + ' Revenue';
+            document.getElementById('label-gst').textContent = prefix + ' GST';
+
+            try {
+                const resp = await fetch('/api/analytics?view=' + view);
+                const data = await resp.json();
+                document.getElementById('stat-revenue').textContent = '₹' + data.revenue.toFixed(2);
+                document.getElementById('stat-gst').textContent = '₹' + data.gst.toFixed(2);
+                document.getElementById('slab-125').textContent = data.slabs.Count125;
+                document.getElementById('slab-75').textContent = data.slabs.Count75;
+                document.getElementById('slab-0').textContent = data.slabs.Count0;
+            } catch (e) {
+                console.error('Failed to fetch analytics:', e);
+            }
+
+            // Update URL without reload
+            const url = new URL(window.location);
+            url.searchParams.set('view', view);
+            history.replaceState(null, '', url);
+        }
     </script>
 </body>
 

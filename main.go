@@ -455,9 +455,21 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Template error: "+err.Error(), 500)
 		return
 	}
-	rev, gst, slabs := getAnalytics()
+	view := r.URL.Query().Get("view")
+	if view == "" {
+		view = "today"
+	}
+	var rev, gst float64
+	var slabs SlabCounts
+	var total int
+	if view == "lifetime" {
+		rev, gst, slabs, total = getAnalyticsFiltered("")
+	} else {
+		today := time.Now().Format("2006-01-02")
+		rev, gst, slabs, total = getAnalyticsFiltered(fmt.Sprintf("upload_date = '%s'", today))
+	}
 	tmpl.Execute(w, map[string]interface{}{
-		"Revenue": rev, "GST": gst, "Slabs": slabs,
+		"Revenue": rev, "GST": gst, "Slabs": slabs, "Total": total, "View": view,
 	})
 }
 
@@ -547,9 +559,18 @@ func handleHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAnalyticsAPI(w http.ResponseWriter, r *http.Request) {
-	rev, gst, slabs := getAnalytics()
+	view := r.URL.Query().Get("view")
+	var rev, gst float64
+	var slabs SlabCounts
+	var total int
+	if view == "lifetime" {
+		rev, gst, slabs, total = getAnalyticsFiltered("")
+	} else {
+		today := time.Now().Format("2006-01-02")
+		rev, gst, slabs, total = getAnalyticsFiltered(fmt.Sprintf("upload_date = '%s'", today))
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"revenue": rev, "gst": gst, "slabs": slabs})
+	json.NewEncoder(w).Encode(map[string]interface{}{"revenue": rev, "gst": gst, "slabs": slabs, "total": total, "view": view})
 }
 
 func handleHistoryAPI(w http.ResponseWriter, r *http.Request) {
