@@ -425,6 +425,7 @@
         <div class="view-toggle">
             <div class="toggle-group">
                 <button id="toggle-today" onclick="switchView('today')">📅 Today</button>
+                <button id="toggle-upload" onclick="switchView('upload')">📥 Last Upload</button>
                 <button id="toggle-lifetime" onclick="switchView('lifetime')">🌐 Lifetime</button>
             </div>
         </div>
@@ -432,12 +433,14 @@
         <div class="stats">
             <div class="stat green">
                 <div class="value" id="stat-revenue">₹{{printf "%.2f" .Revenue}}</div>
-                <div class="label" id="label-revenue">{{if eq .View "lifetime"}}Total Revenue{{else}}Today's
+                <div class="label" id="label-revenue">{{if eq .View "lifetime"}}Total Revenue{{else if eq .View
+                    "upload"}}Upload Revenue{{else}}Today's
                     Revenue{{end}}</div>
             </div>
             <div class="stat amber">
                 <div class="value" id="stat-gst">₹{{printf "%.2f" .GST}}</div>
-                <div class="label" id="label-gst">{{if eq .View "lifetime"}}Total GST{{else}}Today's GST{{end}}</div>
+                <div class="label" id="label-gst">{{if eq .View "lifetime"}}Total GST{{else if eq .View "upload"}}Upload
+                    GST{{else}}Today's GST{{end}}</div>
             </div>
         </div>
 
@@ -504,7 +507,7 @@
         window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => { if (localStorage.getItem('theme') === 'system') applyTheme() });
         applyTheme();
 
-        // View toggle: today (default) / lifetime
+        // View toggle: today (default) / upload / lifetime
         const currentView = '{{.View}}' || 'today';
         document.getElementById('toggle-' + currentView).classList.add('active');
 
@@ -512,8 +515,9 @@
             document.querySelectorAll('.toggle-group button').forEach(b => b.classList.remove('active'));
             document.getElementById('toggle-' + view).classList.add('active');
 
-            // Update labels
-            const prefix = view === 'lifetime' ? 'Total' : "Today's";
+            // Update labels based on view
+            const labels = { today: "Today's", upload: 'Upload', lifetime: 'Total' };
+            const prefix = labels[view] || "Today's";
             document.getElementById('label-revenue').textContent = prefix + ' Revenue';
             document.getElementById('label-gst').textContent = prefix + ' GST';
 

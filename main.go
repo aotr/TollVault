@@ -45,6 +45,25 @@ type Transaction struct {
 	OperatorID         string
 	ResidentName       string
 	UploadDate         string
+	EnrolmentID        string
+	EnrolmentDate      string
+	EnrolmentTime      string
+}
+
+// parseEnrolmentNoDate decodes the 28-digit ENROLMENT_NO_DATE into
+// enrollment ID (XXXX/XXXXX/XXXXX), date (YYYY-MM-DD), and time (HH:MM:SS).
+func parseEnrolmentNoDate(val string) (eid, date, tm string) {
+	val = strings.TrimSpace(val)
+	if len(val) != 28 {
+		return "", "", ""
+	}
+	eidPart := val[:14]
+	datePart := val[14:22]
+	timePart := val[22:]
+	eid = fmt.Sprintf("%s/%s/%s", eidPart[:4], eidPart[4:9], eidPart[9:])
+	date = fmt.Sprintf("%s-%s-%s", datePart[:4], datePart[4:6], datePart[6:])
+	tm = fmt.Sprintf("%s:%s:%s", timePart[:2], timePart[2:4], timePart[4:])
+	return
 }
 
 type SlabCounts struct {
@@ -194,8 +213,8 @@ func initDB() {
 		log.Fatal(err)
 	}
 
-	// Migration: add upload_date column if missing (for old databases)
-	var colExists bool
+	// Collect existing columns
+	existingCols := map[string]bool{}
 	rows, err := db.Query("PRAGMA table_info(transactions)")
 	if err == nil {
 		for rows.Next() {
@@ -205,28 +224,73 @@ func initDB() {
 			var dflt sql.NullString
 			var pk int
 			rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk)
-			if name == "upload_date" {
-				colExists = true
-			}
+			existingCols[name] = true
 		}
 		rows.Close()
 	}
-	if !colExists {
-		_, err = db.Exec("ALTER TABLE transactions ADD COLUMN upload_date TEXT")
-		if err != nil {
-			log.Println("Migration ALTER error:", err)
+
+	// Migration: add upload_date if missing
+	if !existingCols["upload_date"] {
+		if _, err = db.Exec("ALTER TABLE transactions ADD COLUMN upload_date TEXT"); err != nil {
+			log.Println("Migration error (upload_date):", err)
 		} else {
 			db.Exec("UPDATE transactions SET upload_date = date('now') WHERE upload_date IS NULL")
 			log.Println("Migration: added upload_date column")
+		}
+	}
+
+	// Migration: add enrolment_id, enrolment_date, enrolment_time columns
+	newCols := []string{"enrolment_id", "enrolment_date", "enrolment_time"}
+	for _, col := range newCols {
+		if !existingCols[col] {
+			if _, err = db.Exec("ALTER TABLE transactions ADD COLUMN " + col + " TEXT"); err != nil {
+				log.Printf("Migration error (%s): %v", col, err)
+			} else {
+				log.Printf("Migration: added %s column", col)
+			}
+		}
+	}
+
+	// Backfill: parse existing enrolment_no_date values into new columns
+	backfillRows, err := db.Query("SELECT id, enrolment_no_date FROM transactions WHERE enrolment_date IS NULL OR enrolment_date = ''")
+	if err == nil {
+		var updates []struct {
+			id   int
+			eid  string
+			date string
+			tm   string
+		}
+		for backfillRows.Next() {
+			var id int
+			var raw string
+			backfillRows.Scan(&id, &raw)
+			eid, date, tm := parseEnrolmentNoDate(raw)
+			if date != "" {
+				updates = append(updates, struct {
+					id   int
+					eid  string
+					date string
+					tm   string
+				}{id, eid, date, tm})
+			}
+		}
+		backfillRows.Close()
+		for _, u := range updates {
+			db.Exec("UPDATE transactions SET enrolment_id=?, enrolment_date=?, enrolment_time=? WHERE id=?",
+				u.eid, u.date, u.tm, u.id)
+		}
+		if len(updates) > 0 {
+			log.Printf("Migration: backfilled enrolment data for %d rows", len(updates))
 		}
 	}
 }
 
 func saveTransaction(t Transaction) error {
 	_, err := db.Exec(
-		`INSERT INTO transactions(enrolment_no_date, total_amount_charged, gst_amount, operator_id, resident_name, upload_date)
-		 VALUES(?, ?, ?, ?, ?, ?) ON CONFLICT(enrolment_no_date) DO NOTHING`,
+		`INSERT INTO transactions(enrolment_no_date, total_amount_charged, gst_amount, operator_id, resident_name, upload_date, enrolment_id, enrolment_date, enrolment_time)
+		 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(enrolment_no_date) DO NOTHING`,
 		t.EnrolmentNoDate, t.TotalAmountCharged, t.GSTAmount, t.OperatorID, t.ResidentName, t.UploadDate,
+		t.EnrolmentID, t.EnrolmentDate, t.EnrolmentTime,
 	)
 	return err
 }
@@ -272,22 +336,22 @@ func getHistory(period, fromDate, toDate string) []HistoryRow {
 	var groupExpr string
 	switch period {
 	case "week":
-		groupExpr = "strftime('%Y-W%W', upload_date)"
+		groupExpr = "strftime('%Y-W%W', COALESCE(enrolment_date, upload_date))"
 	case "month":
-		groupExpr = "strftime('%Y-%m', upload_date)"
+		groupExpr = "strftime('%Y-%m', COALESCE(enrolment_date, upload_date))"
 	case "year":
-		groupExpr = "strftime('%Y', upload_date)"
+		groupExpr = "strftime('%Y', COALESCE(enrolment_date, upload_date))"
 	default:
-		groupExpr = "upload_date"
+		groupExpr = "COALESCE(enrolment_date, upload_date)"
 	}
 
 	where := ""
 	if fromDate != "" && toDate != "" {
-		where = fmt.Sprintf(" WHERE upload_date >= '%s' AND upload_date <= '%s'", fromDate, toDate)
+		where = fmt.Sprintf(" WHERE COALESCE(enrolment_date, upload_date) >= '%s' AND COALESCE(enrolment_date, upload_date) <= '%s'", fromDate, toDate)
 	} else if fromDate != "" {
-		where = fmt.Sprintf(" WHERE upload_date >= '%s'", fromDate)
+		where = fmt.Sprintf(" WHERE COALESCE(enrolment_date, upload_date) >= '%s'", fromDate)
 	} else if toDate != "" {
-		where = fmt.Sprintf(" WHERE upload_date <= '%s'", toDate)
+		where = fmt.Sprintf(" WHERE COALESCE(enrolment_date, upload_date) <= '%s'", toDate)
 	}
 
 	q := fmt.Sprintf(`SELECT %s AS period,
@@ -319,7 +383,7 @@ func getHistory(period, fromDate, toDate string) []HistoryRow {
 
 func getDateRange() (string, string) {
 	var minDate, maxDate sql.NullString
-	db.QueryRow("SELECT MIN(upload_date), MAX(upload_date) FROM transactions").Scan(&minDate, &maxDate)
+	db.QueryRow("SELECT MIN(COALESCE(enrolment_date, upload_date)), MAX(COALESCE(enrolment_date, upload_date)) FROM transactions").Scan(&minDate, &maxDate)
 	return minDate.String, maxDate.String
 }
 
@@ -376,13 +440,21 @@ func processCSV(r io.Reader) (*UploadResult, error) {
 		}
 		amt, _ := strconv.ParseFloat(rec[hm["TOTAL_AMOUNT_CHARGED"]], 64)
 		gst, _ := strconv.ParseFloat(rec[hm["GST_AMOUNT"]], 64)
+		rawEND := rec[hm["ENROLMENT_NO_DATE"]]
+		eid, eDate, eTime := parseEnrolmentNoDate(rawEND)
+		if eDate == "" {
+			eDate = today // fallback if parsing fails
+		}
 		saveTransaction(Transaction{
-			EnrolmentNoDate:    rec[hm["ENROLMENT_NO_DATE"]],
+			EnrolmentNoDate:    rawEND,
 			TotalAmountCharged: amt,
 			GSTAmount:          gst,
 			OperatorID:         rec[hm["OPERATOR_ID"]],
 			ResidentName:       rec[hm["RESIDENT_NAME"]],
 			UploadDate:         today,
+			EnrolmentID:        eid,
+			EnrolmentDate:      eDate,
+			EnrolmentTime:      eTime,
 		})
 		result.Rows++
 		result.Revenue += amt
@@ -462,11 +534,19 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	var rev, gst float64
 	var slabs SlabCounts
 	var total int
-	if view == "lifetime" {
+	switch view {
+	case "lifetime":
 		rev, gst, slabs, total = getAnalyticsFiltered("")
-	} else {
+	case "upload":
+		var lastDate sql.NullString
+		db.QueryRow("SELECT MAX(upload_date) FROM transactions").Scan(&lastDate)
+		if lastDate.Valid && lastDate.String != "" {
+			rev, gst, slabs, total = getAnalyticsFiltered(fmt.Sprintf("upload_date = '%s'", lastDate.String))
+		}
+	default: // today
+		view = "today"
 		today := time.Now().Format("2006-01-02")
-		rev, gst, slabs, total = getAnalyticsFiltered(fmt.Sprintf("upload_date = '%s'", today))
+		rev, gst, slabs, total = getAnalyticsFiltered(fmt.Sprintf("COALESCE(enrolment_date, upload_date) = '%s'", today))
 	}
 	tmpl.Execute(w, map[string]interface{}{
 		"Revenue": rev, "GST": gst, "Slabs": slabs, "Total": total, "View": view,
@@ -506,7 +586,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	// Send Telegram report in background
 	go sendTelegramReport(result)
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/?view=upload", http.StatusSeeOther)
 }
 
 func handleReset(w http.ResponseWriter, r *http.Request) {
@@ -521,6 +601,7 @@ func handleReset(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
+	// Reset still uses upload_date since it undoes the last *upload batch*
 	_, err := db.Exec("DELETE FROM transactions WHERE upload_date = ?", lastDate.String)
 	if err != nil {
 		http.Error(w, "Reset error: "+err.Error(), 500)
@@ -563,11 +644,19 @@ func handleAnalyticsAPI(w http.ResponseWriter, r *http.Request) {
 	var rev, gst float64
 	var slabs SlabCounts
 	var total int
-	if view == "lifetime" {
+	switch view {
+	case "lifetime":
 		rev, gst, slabs, total = getAnalyticsFiltered("")
-	} else {
+	case "upload":
+		var lastDate sql.NullString
+		db.QueryRow("SELECT MAX(upload_date) FROM transactions").Scan(&lastDate)
+		if lastDate.Valid && lastDate.String != "" {
+			rev, gst, slabs, total = getAnalyticsFiltered(fmt.Sprintf("upload_date = '%s'", lastDate.String))
+		}
+	default:
+		view = "today"
 		today := time.Now().Format("2006-01-02")
-		rev, gst, slabs, total = getAnalyticsFiltered(fmt.Sprintf("upload_date = '%s'", today))
+		rev, gst, slabs, total = getAnalyticsFiltered(fmt.Sprintf("COALESCE(enrolment_date, upload_date) = '%s'", today))
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"revenue": rev, "gst": gst, "slabs": slabs, "total": total, "view": view})
@@ -708,7 +797,7 @@ func handleTelegramUpdates() {
 				msg.ParseMode = "Markdown"
 			case "today":
 				today := time.Now().Format("2006-01-02")
-				rev, gst, slabs, total := getAnalyticsFiltered(fmt.Sprintf("upload_date = '%s'", today))
+				rev, gst, slabs, total := getAnalyticsFiltered(fmt.Sprintf("COALESCE(enrolment_date, upload_date) = '%s'", today))
 				msg.Text = fmt.Sprintf(
 					"📅 *Today (%s)*\n"+
 						"━━━━━━━━━━━━━━━━━━━━\n"+
